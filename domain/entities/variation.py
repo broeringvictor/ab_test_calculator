@@ -38,7 +38,7 @@ class Variation:
         """
         if visitors == 0:
             return 0.0
-        return (conversion_rate * (1 - conversion_rate) / visitors) ** 0.5
+        
         default_error = conversion_rate * (1 - conversion_rate) / visitors
         return default_error
         

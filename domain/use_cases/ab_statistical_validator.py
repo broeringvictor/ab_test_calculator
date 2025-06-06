@@ -1,5 +1,9 @@
+from calendar import c
+from email.policy import default
+from math import e
 from ..entities.variation import Variation
 from domain.entities import variation
+from scipy.stats import norm
 
 class ABStatisticalValidator:
     def __init__(self, variation: Variation) -> None:
@@ -34,11 +38,21 @@ class ABStatisticalValidator:
 
         return z_score
 
-    def calculate_standard_error_difference:
+    def calculate_standard_error_difference(self) --> float:
         """
         Calcula o erro padrão da diferença entre as taxas de conversão.
         """
-        
 
-        
-        return standard_error_difference    
+        standard_error_difference = (self.variation.default.error_a * self.variation.default_error_a + self.variation.default.error_b * self.variation.default_error_b) 
+
+        return standard_error_difference
+
+    def calculate_z_table_value_critical(self) -> float:
+        """
+        Calcula o valor crítico da tabela z para o nível de confiança especificado.
+        """
+        z_table_value_critical = norm.ppf((self.variation.tail_numbers - self.variation.confidence_level) / self.variation.tail_numbers)
+
+        return z_table_value_critical
+
+    
