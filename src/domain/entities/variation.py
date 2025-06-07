@@ -20,7 +20,7 @@ class Variation:
         self.estimated_uplift = estimated_uplift / 100
         self.conversion_rate_a = (conversions_a / variation_a_visitors) if variation_a_visitors != 0 else 0.0
         self.conversion_rate_b = (conversions_b / variation_b_visitors) if variation_b_visitors != 0 else 0.0
-        
+        self.obs_power_on = True if self.conversion_rate_b > self.conversion_rate_a else False
 
         self.default_error_a = self.calculate_default_error(self.conversion_rate_a, self.variation_a_visitors)
         self.default_error_b = self.calculate_default_error(self.conversion_rate_b, self.variation_b_visitors)
