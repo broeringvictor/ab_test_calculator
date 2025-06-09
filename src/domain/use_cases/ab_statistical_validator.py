@@ -1,7 +1,7 @@
 from scipy.stats import norm, chisquare
 from typing import Dict, Any
 import math
-from datetime import date
+from datetime import date, timedelta
 import numpy as np
 from domain.entities.ab_tester import ABTester
 from domain.entities.variation import Variation
@@ -121,56 +121,95 @@ class ABStatisticalValidator:
         return float(uplift)
 
     def _calculate_observed_test_power(self, z_critical: float) -> float:
-        """
-        Calcula o Poder do Teste Observado (Power) conforme a fórmula da planilha.
-        
-        Fórmula Excel:
-        =IF(D15=TRUE(),1-NORM.DIST(((D7+D8*H4-E7)/E8),0,1,TRUE()),1-NORM.DIST(((E7+E8*H4-D7)/D8),0,1,TRUE()))
-
-        """
-
-        conv_a = self.variation.conversions_a
-        rate_a = self.variation.conversion_rate_a
-        conv_b = self.variation.conversions_b
-        rate_b = self.variation.conversion_rate_b
-        
-        # Condição baseada na célula D15 (OBS Power)
-        if self.variation.obs_power_on:
-            # Parte VERDADEIRA da fórmula: 1-NORM.DIST(((D7+D8*H4-E7)/E8),0,1,TRUE())
-            if rate_b == 0:
-                return 0.0
+            """
+            Calcula o Poder do Teste Observado (Power) conforme a fórmula da planilha.
             
-            numerador = conv_a + (rate_a * z_critical) - conv_b
-            denominador = rate_b
-            x = numerador / denominador
-            # norm.sf(x) é a Survival Function, equivalente a 1 - norm.cdf(x)
-            return float(norm.sf(x))
-        else:
-            # Parte FALSA da fórmula: 1-NORM.DIST(((E7+E8*H4-D7)/D8),0,1,TRUE())
-            if rate_a == 0:
-                return float(0.0)
+            Fórmula Excel:
+            =IF(D15=TRUE(),1-NORM.DIST(((D7+D8*H4-E7)/E8),0,1,TRUE()),1-NORM.DIST(((E7+E8*H4-D7)/D8),0,1,TRUE()))
+            """
+            # --- CORREÇÃO: Carregar as variáveis corretas ---
+            # Em vez de 'conversions', usamos as taxas (rates) e erros padrão (standard errors)
+            rate_a = self.variation.conversion_rate_a
+            std_err_a = self.variation.default_error_a
+            rate_b = self.variation.conversion_rate_b
+            std_err_b = self.variation.default_error_b
+            
+            # A lógica da planilha espera um Z-Crítico positivo. Como o seu código
+            # calcula um valor negativo, usamos o valor absoluto (abs) para corrigir.
+            z_crit_abs = abs(z_critical)
 
-            numerador = conv_b + (rate_b * z_critical) - conv_a
-            denominador = rate_a
-            y = numerador / denominador
-            return float(norm.sf(y))
+            # Condição baseada na célula D15 (OBS Power)
+            if self.variation.obs_power_on:
+                # Parte VERDADEIRA da fórmula: (D7 + D8*H4 - E7) / E8
+                # Onde D7=rate_a, D8=std_err_a, H4=z_critical, E7=rate_b, E8=std_err_b
+                if std_err_b == 0:
+                    return 0.0
+                
+                numerador = rate_a + (std_err_a * z_crit_abs) - rate_b
+                denominador = std_err_b
+                x = numerador / denominador
+                return float(norm.sf(x)) # norm.sf(x) é 1 - norm.cdf(x)
+            else:
+                # Parte FALSA da fórmula: (E7 + E8*H4 - D7) / D8
+                if std_err_a == 0:
+                    return 0.0
+
+                numerador = rate_b + (std_err_b * z_crit_abs) - rate_a
+                denominador = std_err_a
+                y = numerador / denominador
+                return float(norm.sf(y))
+            """
+            Calcula o Poder do Teste Observado (Power) conforme a fórmula da planilha.
+            
+            Fórmula Excel:
+            =IF(D15=TRUE(),1-NORM.DIST(((D7+D8*H4-E7)/E8),0,1,TRUE()),1-NORM.DIST(((E7+E8*H4-D7)/D8),0,1,TRUE()))
+
+            """
+
+            conv_a = self.variation.conversions_a
+            rate_a = self.variation.conversion_rate_a
+            conv_b = self.variation.conversions_b
+            rate_b = self.variation.conversion_rate_b
+            
+            # Condição baseada na célula D15 (OBS Power)
+            if self.variation.obs_power_on:
+                # Parte VERDADEIRA da fórmula: 1-NORM.DIST(((D7+D8*H4-E7)/E8),0,1,TRUE())
+                if rate_b == 0:
+                    return 0.0
+                
+                numerador = conv_a + (rate_a * z_critical) - conv_b
+                denominador = rate_b
+                x = numerador / denominador
+                # norm.sf(x) é a Survival Function, equivalente a 1 - norm.cdf(x)
+                return float(norm.sf(x))
+            else:
+                # Parte FALSA da fórmula: 1-NORM.DIST(((E7+E8*H4-D7)/D8),0,1,TRUE())
+                if rate_a == 0:
+                    return float(0.0)
+
+                numerador = conv_b + (rate_b * z_critical) - conv_a
+                denominador = rate_a
+                y = numerador / denominador
+                return float(norm.sf(y))
 
     def _calculate_upper_bound(self, conversion_rate: float, standard_error: float, z_critical: float) -> float:
         """
         Calculates the generic upper confidence interval bound for any group.
-
-        Args:
-            conversion_rate: The conversion rate of the group (e.g., control's or variation's).
-            standard_error: The standard error of the group.
-            z_critical: The critical Z-score for the desired confidence level.
-
-        Returns:
-            The upper bound of the confidence interval.
         """
-        upper_bound = conversion_rate + (standard_error * z_critical)
+        # CORREÇÃO: Usamos abs(z_critical) para garantir que o cálculo seja sempre uma SOMA,
+        # independentemente do sinal do Z-Crítico de entrada.
+        upper_bound = conversion_rate + (standard_error * abs(z_critical))
         return float(upper_bound)
 
     def _calculate_lower_bound(self, conversion_rate: float, standard_error: float, z_critical: float) -> float:
+        """
+        Calculates the generic lower confidence interval bound for any group.
+        """
+    
+
+        # CORREÇÃO: Usamos abs(z_critical) para garantir que o cálculo seja sempre uma SUBTRAÇÃO.
+        lower_bound = conversion_rate - (standard_error * abs(z_critical))
+        return float(lower_bound)
         """
         Calculates the generic lower confidence interval bound for any group.
 
@@ -262,8 +301,9 @@ class ABStatisticalValidator:
         Calcula a duração do teste em dias úteis (seg-sex).
         Fórmula Excel: =SE(A10="";DIATRABALHOTOTAL(A8;H23);DIATRABALHOTOTAL(A8;A10))
         """
-        # Retorna .item() para converter o resultado do numpy para um int padrão do Python
-        return np.busday_count(self.tester.start_date, effective_end_date).item()
+
+        inclusive_end_date = effective_end_date + timedelta(days=1)
+        return np.busday_count(self.tester.start_date, inclusive_end_date).item()
 
     def _calculate_average_daily_visitors(self, total_duration_days: int) -> float:
         """
@@ -280,34 +320,27 @@ class ABStatisticalValidator:
     def get_test_planning_metrics(self, mde: float) -> dict:
         """
         Orquestra os cálculos de planejamento do teste (usuários e dias necessários).
-
-        Args:
-            mde (float): O Mínimo Efeito Detectável (Uplift Esperado), ex: 0.05 para 5%.
-
-        Returns:
-            dict: Um dicionário contendo os usuários e dias necessários para 80% e 95% de poder.
         """
         p_control = self.variation.conversion_rate_a
 
-        # 1. Calcular usuários necessários
-        # Corresponde à célula H29
+
         required_users_80_power = self._calculate_required_users(
             p_control=p_control, mde=mde, power_constant=16
         )
-        # Corresponde à célula H30
+
         required_users_95_power = self._calculate_required_users(
             p_control=p_control, mde=mde, power_constant=26
         )
 
-        # 2. Calcular dias necessários
+
         temporal_results = self.get_temporal_validation_results()
         daily_visitors = temporal_results.get("average_daily_visitors", 0)
 
-        # Corresponde à célula H33 (H30/H26 na imagem, mas a lógica é Usuários/VisitantesDiarios)
+
         required_days_80_power = self._calculate_required_days(
             required_users=required_users_80_power, daily_visitors=daily_visitors
         )
-        # Corresponde à célula H34 (H30/H26 na imagem)
+
         required_days_95_power = self._calculate_required_days(
             required_users=required_users_95_power, daily_visitors=daily_visitors
         )
@@ -332,17 +365,15 @@ class ABStatisticalValidator:
         if p_control <= 0 or mde <= 0:
             return 0
 
-        # O termo (p_control * mde) é o uplift absoluto esperado
+
         absolute_uplift = p_control * mde
 
         if absolute_uplift <= 0:
             return 0
 
-        # A variância da conversão do controle
+
         variance = p_control * (1 - p_control)
 
-        # Implementação direta da fórmula da planilha
-        # POTÊNCIA(RAIZ(variancia) / absolute_uplift, 2) é o mesmo que variancia / absolute_uplift^2
         required_users = 2 * (power_constant * (variance / (absolute_uplift**2)))
 
         return math.ceil(required_users)
@@ -354,7 +385,7 @@ class ABStatisticalValidator:
         Fórmula Excel: =Numero de Usuários Necessários / Visitantes Diarios
         """
         if not daily_visitors or daily_visitors <= 0:
-            # Retorna 0 ou um número grande para indicar que nunca será concluído
+        
             return 0
 
         days = required_users / daily_visitors
