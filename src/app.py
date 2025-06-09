@@ -1,33 +1,68 @@
 import streamlit as st
 
-# --- Configuração da Página ---
-# ESTA DEVE SER A PRIMEIRA INSTRUÇÃO STREAMLIT
 st.set_page_config(layout="wide", page_title="Calculadora de Teste A/B")
 
 # --- Importações ---
-# Importe suas classes de entidade e componentes DEPOIS de st.set_page_config
 from domain.entities.ab_tester import ABTester
 from domain.entities.variation import Variation
 from components.ab_tester_component import ABTesterComponent
 from components.variation_component import VariationComponent
-from components.results_component import ResultsComponent # Adicionada importação global
+from components.results_component import ResultsComponent 
 
-# --- Funções de Hash para suas classes customizadas ---
+st.markdown("""
+<style>
+    /* Aumenta o tamanho da fonte do título principal (st.title) */
+    h1 {
+        font-size: 2.8rem !important;
+    }
+
+    /* Aumenta o tamanho da fonte dos subtítulos (st.header, st.subheader) */
+    h2, h3 {
+        font-size: 2rem !important;
+    }
+    
+    /* Aumenta o texto geral (parágrafos) e nos botões */
+    p, .st-emotion-cache-1y4p8pa, .st-emotion-cache-10trblm {
+        font-size: 1.3rem !important;
+    }
+
+    /* Aumenta o tamanho do rótulo e do valor dentro de st.metric */
+    [data-testid="stMetricLabel"] p {
+        font-size: 1.3rem !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 3.5rem !important;
+    }
+
+    /* Aumenta o texto dentro dos expanders */
+    .st-expander p {
+        font-size: 1.1rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
 def hash_ab_tester_entity(tester: ABTester) -> tuple:
     """Cria uma impressão digital (hash) para a entidade ABTester."""
+    # Ajuste esta tupla para incluir todos os atributos de ABTester
+    # que afetam os cálculos em ABStatisticalValidator ou a exibição em ResultsComponent.
+    # Exemplo: name, start_date, end_date, hypothesis, desired_confidence_level
     return (
-        tester.name, # Adicionar todos os atributos que definem o estado
+        tester.name,
         tester.start_date,
         tester.end_date,
         tester.hypothesis,
         tester.desired_confidence_level,
-        # Se ABTester tiver power_level, inclua-o. Caso contrário, remova.
-        # Assumindo que power_level não está em ABTester, mas sim em Variation ou é um conceito geral.
-        # Se for parte do ABTester, adicione: tester.power_level,
+        # Se power_level for um atributo de ABTester e usado, inclua-o.
+        # Caso contrário, remova a referência a tester.power_level se não existir.
+        # Se 'confidence_level' é o mesmo que 'desired_confidence_level', use apenas um.
     )
 
 def hash_variation_entity(variation: Variation) -> tuple:
     """Cria uma impressão digital (hash) para a entidade Variation."""
+    # Esta função parece correta, assumindo que Variation tem estes atributos
+    # e eles são usados nos cálculos.
     return (
         variation.variation_a_visitors,
         variation.conversions_a,
@@ -47,13 +82,13 @@ def hash_variation_entity(variation: Variation) -> tuple:
 )
 def perform_statistical_analysis(tester_entity: ABTester, variation_entity: Variation):
     """
-    Executa a análise estatística e retorna o componente de resultados.
-    O decorator @st.cache_data garante que ela só rode se os inputs mudarem.
+    Cria o componente de resultados. Os cálculos são feitos dentro do ResultsComponent.
+    O decorator @st.cache_data garante que ela só rode se os inputs (entidades) mudarem.
     """
-    print("Executando a análise estatística (cache miss)...") # Para debug
-    # A instância do ResultsComponent já faz os cálculos no seu __init__
-    results_component = ResultsComponent(tester=tester_entity, variation=variation_entity)
-    return results_component
+    print("Instanciando ResultsComponent (cache miss para perform_statistical_analysis)...") # Para debug
+    # ResultsComponent agora faz os cálculos em seu __init__
+    results_display_component = ResultsComponent(tester=tester_entity, variation=variation_entity)
+    return results_display_component
 
 st.title("Calculadora de Significado Estatístico para Teste A/B")
 
@@ -65,7 +100,7 @@ def clear_state():
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     print("Cache e estado da sessão foram limpos.")
-    st.rerun() # Adicionado para recarregar a página e refletir a limpeza
+    st.rerun()
 
 # --- Barra Lateral com os Formulários (Inputs) ---
 with st.sidebar:
@@ -88,10 +123,9 @@ if calculate_button:
 
     if tester_entity and variation_entity:
         with st.spinner("Calculando resultados..."):
-            # Chama a função cacheada.
-            # O ResultsComponent é retornado pela função cacheada.
-            results_display_component = perform_statistical_analysis(tester_entity, variation_entity)
-            results_display_component.render() # Renderiza os resultados
+            # Chama a função cacheada. ResultsComponent é instanciado aqui.
+            results_component_instance = perform_statistical_analysis(tester_entity, variation_entity)
+            results_component_instance.render() # Renderiza os resultados
     else:
         st.error("Por favor, preencha todos os campos corretamente antes de analisar.")
 else:

@@ -23,7 +23,7 @@ class VariationComponent:
 
     def render_inputs(self):
         """Renderiza os inputs, usando as chaves do session_state para persistência."""
-        st.header("2. Dados e Configurações do Teste")
+        
         col1, col2 = st.columns(2)
 
         with col1:
@@ -62,7 +62,7 @@ class VariationComponent:
             )
 
         st.divider()
-        st.subheader("Configurações Estatísticas")
+        
 
         # Usando o 'key' também para o radio button
         st.radio(

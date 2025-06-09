@@ -21,7 +21,7 @@ class ABTesterComponent:
         Renderiza todos os widgets de input do Streamlit na tela.
         Os valores selecionados pelo usuário são armazenados nos atributos da classe.
         """
-        st.header("1. Definições do Teste")
+        st.header("Definições do Teste")
 
         self.name = st.text_input(
             label="Nome do Teste",
