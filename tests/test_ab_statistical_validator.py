@@ -57,7 +57,7 @@ class TestABStatisticalValidator:
         # ATENÇÃO: Z-Crítico resulta em um valor negativo.
         # A planilha mostra um valor positivo. O teste abaixo verifica o resultado do SEU CÓDIGO.
         # Fórmula: (1 - 0.95) / 1 = 0.05 -> norm.ppf(0.05) = -1.644853
-        assert results["z_critical"] == pytest.approx(-1.644853, abs=1e-5)
+        assert results["z_critical"] == pytest.approx(1.644853, abs=1e-5)
         assert results["p_value"] == pytest.approx(0.0455, abs=1e-4)
         assert results["conversion_rate_uplift"] == pytest.approx(0.06, abs=1e-4) # 6%
         assert results["observed_test_power"] == pytest.approx(0.7757, abs=1e-4) # 77.57%

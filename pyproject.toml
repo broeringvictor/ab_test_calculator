@@ -5,12 +5,26 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "scipy>=1.15, <2.0",  
-    "numpy>=2.0, <3.0",   
+    # Dependências originais para cálculo e testes
+    "scipy>=1.15, <2.0",
+    "numpy>=2.0, <3.0",
+    
+    # Dependências para a interface gráfica e manipulação de dados
+    "streamlit>=1.45.1",
+    "pandas>=2.3.0",
+    "altair>=5.5.0", # Usado pelo Streamlit para gráficos
+    "pytest>=8.4.0",
 ]
+
+# Seção para desenvolvimento e testes
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.0",
+    "black",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-

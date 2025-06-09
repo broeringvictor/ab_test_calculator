@@ -93,7 +93,7 @@ class ABStatisticalValidator:
         """
 
         prob = (self.variation.tail_numbers - self.variation.confidence_level) / self.variation.tail_numbers
-        return float(norm.ppf(prob))
+        return abs(float(norm.ppf(prob))) 
     
     def _calculate_p_value(self, z_score: float) -> float:
         """
