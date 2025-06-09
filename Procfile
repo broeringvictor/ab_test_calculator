@@ -1,1 +1,1 @@
-web: streamlit run src/app.py
+web: uv streamlit run src/app.py
