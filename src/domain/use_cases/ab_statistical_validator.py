@@ -1,14 +1,15 @@
-import re
-
-from scipy.stats import norm
+from scipy.stats import norm, chisquare
 from typing import Dict, Any
 import math
-
+from datetime import date
+import numpy as np
+from domain.entities.ab_tester import ABTester
 from domain.entities.variation import Variation
 
 class ABStatisticalValidator:
-    def __init__(self, variation: Variation) -> None:
+    def __init__(self, variation: Variation, tester: ABTester) -> None:
         self.variation = variation
+        self.tester = tester
 
     def get_statistical_results(self) -> Dict[str, Any]:
         """
@@ -21,8 +22,35 @@ class ABStatisticalValidator:
         p_value = self._calculate_p_value(z_score)
         conversion_rate_uplift = self._calculate_conversion_rate_uplift()
         observed_test_power = self._calculate_observed_test_power(z_critical)
+        current_confidence = float(1.00 - p_value)
 
+        control_upper_bound = self._calculate_upper_bound(
+            conversion_rate=self.variation.conversion_rate_a,
+            standard_error=self.variation.default_error_a,
+            z_critical=z_critical
+        )
+        control_lower_bound = self._calculate_lower_bound(
+            conversion_rate=self.variation.conversion_rate_a,
+            standard_error=self.variation.default_error_a,
+            z_critical=z_critical
+        )
+       
+        variation_upper_bound = self._calculate_upper_bound(
+            conversion_rate=self.variation.conversion_rate_b,
+            standard_error=self.variation.default_error_b,
+            z_critical=z_critical
+        )
+        variation_lower_bound = self._calculate_lower_bound(
+            conversion_rate=self.variation.conversion_rate_b,
+            standard_error=self.variation.default_error_b,
+            z_critical=z_critical
+        )
 
+        srm_results = self.check_sample_ratio_mismatch()
+        temporal_validation_results = self.get_temporal_validation_results()
+        planning_results = self.get_test_planning_metrics(mde=self.variation.estimated_uplift)
+
+        # --- Retornar todos os resultados ---
         return {
             "standard_error_difference": std_err_diff,
             "z_score": z_score,
@@ -30,7 +58,14 @@ class ABStatisticalValidator:
             "p_value": p_value,
             "conversion_rate_uplift": conversion_rate_uplift,
             "observed_test_power": observed_test_power,
-
+            "current_confidence": current_confidence,
+            "control_upper_bound": control_upper_bound,
+            "control_lower_bound": control_lower_bound,
+            "variation_upper_bound": variation_upper_bound,
+            "variation_lower_bound": variation_lower_bound,
+            "srm_results": srm_results,
+            "temporal_validation_results": temporal_validation_results,
+            "planning_results": planning_results  # Combina o dicionário de planejamento ao resultado final
         }
 
     def _calculate_standard_error_difference(self) -> float:
@@ -69,7 +104,8 @@ class ABStatisticalValidator:
             p_value = 1 - norm.cdf(z_score)
             return float(p_value)
         elif tail == 2:
-            p_value = 1 - norm.cdf(abs(z_score))
+            # Para testes bicaudais, o p-value é 2 * (área na cauda)
+            p_value = 2 * (1 - norm.cdf(abs(z_score)))
             return float(p_value)
         else:
             raise ValueError("Número de caudas deve ser 1 ou 2.")
@@ -119,3 +155,207 @@ class ABStatisticalValidator:
             y = numerador / denominador
             return float(norm.sf(y))
 
+    def _calculate_upper_bound(self, conversion_rate: float, standard_error: float, z_critical: float) -> float:
+        """
+        Calculates the generic upper confidence interval bound for any group.
+
+        Args:
+            conversion_rate: The conversion rate of the group (e.g., control's or variation's).
+            standard_error: The standard error of the group.
+            z_critical: The critical Z-score for the desired confidence level.
+
+        Returns:
+            The upper bound of the confidence interval.
+        """
+        upper_bound = conversion_rate + (standard_error * z_critical)
+        return float(upper_bound)
+
+    def _calculate_lower_bound(self, conversion_rate: float, standard_error: float, z_critical: float) -> float:
+        """
+        Calculates the generic lower confidence interval bound for any group.
+
+        Args:
+            conversion_rate: The conversion rate of the group (e.g., control's or variation's).
+            standard_error: The standard error of the group.
+            z_critical: The critical Z-score for the desired confidence level.
+
+        Returns:
+            The lower bound of the confidence interval.
+        """
+        lower_bound = conversion_rate - (standard_error * z_critical)
+        return float(lower_bound)
+    
+    def check_sample_ratio_mismatch(self) -> Dict[str, Any]:
+
+
+        """
+        Verifica a existência de Sample Ratio Mismatch (SRM) usando um Teste Qui-Quadrado.
+
+        SRM ocorre quando o tráfego não é dividido na proporção esperada (ex: 50/50),
+        o que pode invalidar os resultados do teste.
+
+        Returns:
+            Um dicionário contendo:
+            - 'has_srm': True se o p-valor for <= 0.01, indicando SRM.
+            - 'srm_p_value': O p-valor do teste qui-quadrado.
+            - 'srm_expected_per_variation': A contagem de visitantes esperada para cada grupo.
+        """
+        # Valores observados (visitantes reais em cada grupo)
+        # Excel: D5:E5
+        observed_visitors = [self.variation.variation_a_visitors, self.variation.variation_b_visitors]
+
+        total_visitors = sum(observed_visitors)
+        if total_visitors == 0:
+            return {
+                "has_srm": False,
+                "srm_p_value": 1.0,
+                "srm_expected_per_variation": 0
+            }
+
+        # Valores esperados (tráfego dividido igualmente)
+        # Excel: =(D5+E5)*0,5
+        expected_value = total_visitors / 2.0
+        expected_visitors = [expected_value, expected_value]
+
+        # Calcula o p-valor do Teste Qui-Quadrado
+        # Excel: =TESTE.QUIQUA(D5:E5;H19:I19)
+        _, p_value = chisquare(f_obs=observed_visitors, f_exp=expected_visitors)
+
+        # Verifica se há SRM com base no p-valor (nível de significância de 1%)
+        # Excel: =SE(H20<=0,01;"SIM";"NÃO")
+        has_srm = bool(p_value <= 0.01)
+
+        return {
+            "has_srm": has_srm,
+            "srm_p_value": float(p_value),
+            "srm_expected_per_variation": float(expected_value)
+        }
+    
+    def get_temporal_validation_results(self) -> dict:
+        """
+        Orquestra e retorna um dicionário com todas as métricas de validação temporal.
+        """
+        # Define a data final a ser usada: a data de término do teste ou a data de hoje.
+        effective_end_date = self.tester.end_date if self.tester.end_date else date.today()
+        
+        # Calcula cada métrica temporal
+        total_duration = self._calculate_total_duration_days(effective_end_date)
+        business_days = self._calculate_business_days_duration(effective_end_date)
+        daily_visitors = self._calculate_average_daily_visitors(total_duration)
+        
+        return {
+            "current_date": date.today().strftime("%d/%m/%Y"),
+            "total_duration_days": total_duration,
+            "business_days_duration": business_days,
+            "average_daily_visitors": daily_visitors,
+        }
+
+    def _calculate_total_duration_days(self, effective_end_date: date) -> int:
+        """
+        Calcula a duração total do teste em dias corridos.
+        Fórmula Excel: =H23-A8
+        """
+        return (effective_end_date - self.tester.start_date).days
+
+    def _calculate_business_days_duration(self, effective_end_date: date) -> int:
+        """
+        Calcula a duração do teste em dias úteis (seg-sex).
+        Fórmula Excel: =SE(A10="";DIATRABALHOTOTAL(A8;H23);DIATRABALHOTOTAL(A8;A10))
+        """
+        # Retorna .item() para converter o resultado do numpy para um int padrão do Python
+        return np.busday_count(self.tester.start_date, effective_end_date).item()
+
+    def _calculate_average_daily_visitors(self, total_duration_days: int) -> float:
+        """
+        Calcula a média de visitantes diários.
+        Fórmula Excel: =SOMA(D5:E5)/H24
+        """
+        total_visitors = self.variation.variation_a_visitors + self.variation.variation_b_visitors
+
+        if total_duration_days <= 0:
+            return float(total_visitors) # Evita divisão por zero
+            
+        return round(total_visitors / total_duration_days, 2)
+    
+    def get_test_planning_metrics(self, mde: float) -> dict:
+        """
+        Orquestra os cálculos de planejamento do teste (usuários e dias necessários).
+
+        Args:
+            mde (float): O Mínimo Efeito Detectável (Uplift Esperado), ex: 0.05 para 5%.
+
+        Returns:
+            dict: Um dicionário contendo os usuários e dias necessários para 80% e 95% de poder.
+        """
+        p_control = self.variation.conversion_rate_a
+
+        # 1. Calcular usuários necessários
+        # Corresponde à célula H29
+        required_users_80_power = self._calculate_required_users(
+            p_control=p_control, mde=mde, power_constant=16
+        )
+        # Corresponde à célula H30
+        required_users_95_power = self._calculate_required_users(
+            p_control=p_control, mde=mde, power_constant=26
+        )
+
+        # 2. Calcular dias necessários
+        temporal_results = self.get_temporal_validation_results()
+        daily_visitors = temporal_results.get("average_daily_visitors", 0)
+
+        # Corresponde à célula H33 (H30/H26 na imagem, mas a lógica é Usuários/VisitantesDiarios)
+        required_days_80_power = self._calculate_required_days(
+            required_users=required_users_80_power, daily_visitors=daily_visitors
+        )
+        # Corresponde à célula H34 (H30/H26 na imagem)
+        required_days_95_power = self._calculate_required_days(
+            required_users=required_users_95_power, daily_visitors=daily_visitors
+        )
+
+        return {
+            "required_users_80_power": required_users_80_power,
+            "required_users_95_power": required_users_95_power,
+            "required_days_80_power": required_days_80_power,
+            "required_days_95_power": required_days_95_power,
+        }
+
+    def _calculate_required_users(self, p_control: float, mde: float, power_constant: float) -> int:
+        """
+        Calcula o número total de usuários necessários com base na fórmula da planilha.
+
+        Fórmula Excel: =2*(CONSTANTE*POTÊNCIA(RAIZ(D7*(1-D7))/(D7*D17);2))
+        Onde:
+        - D7 = p_control
+        - D17 = mde
+        - CONSTANTE = 16 (para 80% de poder) ou 26 (para 95% de poder)
+        """
+        if p_control <= 0 or mde <= 0:
+            return 0
+
+        # O termo (p_control * mde) é o uplift absoluto esperado
+        absolute_uplift = p_control * mde
+
+        if absolute_uplift <= 0:
+            return 0
+
+        # A variância da conversão do controle
+        variance = p_control * (1 - p_control)
+
+        # Implementação direta da fórmula da planilha
+        # POTÊNCIA(RAIZ(variancia) / absolute_uplift, 2) é o mesmo que variancia / absolute_uplift^2
+        required_users = 2 * (power_constant * (variance / (absolute_uplift**2)))
+
+        return math.ceil(required_users)
+
+    def _calculate_required_days(self, required_users: int, daily_visitors: float) -> int:
+        """
+        Calcula o número de dias necessários para atingir a amostra.
+
+        Fórmula Excel: =Numero de Usuários Necessários / Visitantes Diarios
+        """
+        if not daily_visitors or daily_visitors <= 0:
+            # Retorna 0 ou um número grande para indicar que nunca será concluído
+            return 0
+
+        days = required_users / daily_visitors
+        return math.ceil(days)
