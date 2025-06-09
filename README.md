@@ -1,71 +1,85 @@
-Calculadora de Validação de Testes A/B 📊
+# Calculadora de Validação de Testes A/B 📊
 
-Uma ferramenta interativa e poderosa para validar estatisticamente os resultados de testes A/B. Esta aplicação foi desenvolvida em Python com Streamlit e oferece uma análise completa, incluindo significância estatística, poder do teste, intervalos de confiança e muito mais.
+ Análise de significância estatística em testes A/B é um processo complexo e propenso a erros. Desenvolvi esta aplicação para simplificar essa rotina.
 
-O projeto foi inspirado na Calculadora de Validação de Testes A/B da Conversion Zone e utiliza os mesmos cálculos robustos como base para suas análises.
+Utilizamos a metodologia de cálculo da respeitada planilha da Conversion Zone para assegurar a precisão dos resultados. O desafio é que a terminologia estatística, incluindo termos como:
 
-🚀 Aplicação em Produção
+- Bicaudal
+- Uplift
+- Z-Score
+
+O que não faz parte do cotidiano de muitos profissionais de CRO, Produto ou Marketing.
+
+Pensando nisso, criei esta calculadora interativa com Streamlit. A ferramenta oferece um dashboard completo, permitindo que equipes validem seus experimentos de forma rápida, visual e segura.
+
+## 🚀 Aplicação em Produção
 A calculadora está no ar e pronta para uso! Acesse através do link:
 
 ➤ https://www.calculadora-de-teste-ab.tech/
 
-
 ## ✨ Funcionalidades Principais
 
-* **✅ Análise de Significância Estatística**: Descubra com confiança se os resultados do seu teste são estatisticamente relevantes, com base em métricas essenciais como P-valor e Z-Score.
+| Funcionalidade | Descrição / Benefício para o Usuário |
+| :--- | :--- |
+| **✅ Análise de Significância** | Descubra com confiança estatística se a Variação B é realmente diferente do Controle, utilizando métricas essenciais como **P-valor** e **Z-Score**. |
+| **🔋 Medição de Poder (Power)** | Avalie a sensibilidade do seu teste. Saiba se o tamanho da sua amostra foi suficiente para detectar um efeito real, caso ele exista. |
+| **📊 Intervalos de Confiança** | Visualize a faixa de valores provável para a taxa de conversão de cada grupo, permitindo uma análise de risco e potencial mais profunda. |
+| **🛡️ Validação de SRM** | Garanta a integridade dos seus resultados. O sistema alerta automaticamente se a divisão de tráfego entre os grupos foi desbalanceada. |
+| **⚖️ Testes Uni/Bicaudais** | Tenha flexibilidade para analisar os dados de acordo com a sua hipótese: se você busca apenas uma melhora ou qualquer tipo de diferença significativa. |
+| **🎨 Interface Intuitiva** | Uma experiência de usuário limpa e direta, construída com Streamlit, que torna a análise estatística acessível a todos os níveis de conhecimento. |
+| **🔄 CI/CD Automatizado** | Pipeline de deploy configurado com **GitHub Actions** e **Heroku**, garantindo que a aplicação em produção seja sempre estável e atualizada. |
 
-* **🔋 Medição de Poder do Teste**: Verifique o "Poder Observado" e entenda se o seu teste teve uma amostra robusta o suficiente para detectar um efeito real.
+## 🛠️ Tecnologias Utilizadas
 
-* **📊 Intervalos de Confiança**: Visualize a faixa provável da verdadeira taxa de conversão para cada variação, oferecendo uma camada extra de profundidade na análise.
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-0A9B71?style=for-the-badge&logo=pytest&logoColor=white)
+![Heroku](https://img.shields.io/badge/Heroku-430098?style=for-the-badge&logo=heroku&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)
+![UV](https://img.shields.io/badge/uv-Gerenciador%20de%20Pacotes-blue?style=for-the-badge)
 
-* **🛡️ Validação de SRM (Sample Ratio Mismatch)**: Garanta a confiabilidade dos seus dados com a detecção automática de desbalanceamento no tráfego do teste.
-
-* **⚖️ Suporte a Testes Uni e Bicaudais**: Configure a análise estatística de acordo com a sua hipótese (se você espera apenas uma melhoria ou qualquer tipo de diferença).
-
-* **🎨 Interface Intuitiva e Interativa**: Construída com Streamlit para uma experiência de usuário limpa, facilitando a inserção de dados e a interpretação dos resultados.
-
-* **🔄 CI/CD Automatizado**: Pipeline configurado com GitHub Actions para rodar testes (`pytest`) e fazer deploy automático no Heroku, garantindo estabilidade e agilidade.
-
-🛠️ Tecnologias Utilizadas
-Framework Web: Streamlit
-Linguagem: Python 3.11+
-Gerenciador de Pacotes: UV
-Testes: Pytest
-Hospedagem: Heroku
-CI/CD: GitHub Actions
-
+## 🧠 Glossário de Termos Utilizados
 
 
+**Visitantes**
+> Usuários que acessam a página ou app, representando o volume total de tráfego do experimento.
 
-🧠 Glossário de Termos Utilizados
-&lt;details>
-&lt;summary>Clique para ver as definições das métricas usadas na calculadora&lt;/summary>
+**Conversões**
+> Ações específicas que você deseja que os visitantes realizem (ex: compra, cadastro).
 
-Visitantes: Usuários que acessam a página ou app, representando o volume total de tráfego do experimento.
+**Taxa de Conversão**
+> A porcentagem de visitantes que realizam a conversão. É calculada como `(Conversões / Visitantes) * 100`.
 
-Conversões: Ações específicas que você deseja que os visitantes realizem (ex: compra, cadastro).
+**Erro Padrão**
+> Medida da variabilidade da taxa de conversão da amostra, usada para calcular a precisão e os intervalos de confiança.
 
-Taxa de Conversão: A porcentagem de visitantes que realizam a conversão. (Conversões / Visitantes) * 100.
+**Número de Caudas**
+> Tipo de teste estatístico. **Unicaudal** (uma cauda) testa se uma variação é especificamente *melhor*. **Bicaudal** (duas caudas) testa se há qualquer *diferença* (melhor ou pior).
 
-Erro Padrão: Medida da variabilidade da taxa de conversão da amostra, usada para calcular a precisão e os intervalos de confiança.
+**Nível de Confiança (Confidence Level)**
+> A probabilidade (geralmente 95%) de que os resultados encontrados sejam representativos da realidade.
 
-Número de Caudas: Tipo de teste estatístico. Unicaudal (uma cauda) testa se uma variação é especificamente melhor. Bicaudal (duas caudas) testa se há qualquer diferença (melhor ou pior).
+**Poder do Teste Observado (Power)**
+> A probabilidade de que o teste tenha detectado um efeito real, caso ele exista. Um poder de 80% ou mais é considerado ideal.
 
-Nível de Confiança: A probabilidade (geralmente 95%) de que os resultados encontrados sejam representativos da realidade.
+**Uplift**
+> A melhoria percentual na taxa de conversão da variação em comparação com o controle.
 
-Poder do Teste Observado (Power): A probabilidade de que o teste tenha detectado um efeito real, caso ele exista. Um poder de 80% ou mais é considerado ideal.
+**Z-Score**
+> Medida que indica quantos desvios padrão a diferença observada está da média, ajudando a determinar a significância estatística.
 
-Uplift: A melhoria percentual na taxa de conversão da variação em comparação com o controle.
+**P-Value**
+> A probabilidade de obter os resultados observados (ou mais extremos) se não houvesse nenhuma diferença real entre as variações. Um P-Value baixo (ex: < 0.05) indica significância estatística.
 
-Z-Score: Medida que indica quantos desvios padrão a diferença observada está da média, ajudando a determinar a significância estatística.
+**Intervalos de Confiança**
+> A faixa de valores dentro da qual a verdadeira taxa de conversão provavelmente se encontra, com base no nível de confiança.
 
-P-Value: A probabilidade de obter os resultados observados (ou mais extremos) se não houvesse nenhuma diferença real entre as variações. Um P-Value baixo (ex: &lt; 0.05) indica significância estatística.
+**SRM (Sample Ratio Mismatch)**
+> Ocorre quando a proporção de visitantes entre os grupos do teste não corresponde à proporção esperada, o que pode invalidar os resultados.
 
-Intervalos de Confiança: A faixa de valores dentro da qual a verdadeira taxa de conversão provavelmente se encontra, com base no nível de confiança.
 
-SRM (Sample Ratio Mismatch): Ocorre quando a proporção de visitantes entre os grupos do teste não corresponde à proporção esperada, o que pode invalidar os resultados.
 
-&lt;/details>
 
-📜 Licença
+
+## 📜 Licença
 Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
