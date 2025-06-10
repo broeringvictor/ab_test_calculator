@@ -5,21 +5,21 @@ from domain.entities.ab_tester import ABTester # Importa sua entidade
 class ABTesterComponent:
     """
     Um componente Streamlit para renderizar e gerenciar os inputs
-    relacionados à entidade ABTester.
+    de definição de um teste A/B.
     """
     def __init__(self):
-        """Inicializa o componente."""
-        # Atributos para armazenar os valores dos inputs
-        self.name = "Teste A/B"
-        self.start_date = date.today()
-        self.end_date = self.start_date + timedelta(days=14)
-        self.hypothesis = ""
-        self.desired_confidence_level = 95.0
+        """Inicializa o componente com valores padrão."""
+        # Adicionando type hints para clareza
+        self.name: str = "Teste A/B"
+        self.start_date: date = date.today()
+        self.end_date: date = self.start_date + timedelta(days=14)
+        self.hypothesis: str = ""
+        self.desired_confidence_level: float = 95.0
 
     def render_inputs(self):
         """
-        Renderiza todos os widgets de input do Streamlit na tela.
-        Os valores selecionados pelo usuário são armazenados nos atributos da classe.
+        Renderiza os widgets de input e atualiza os atributos da classe
+        com os valores selecionados pelo usuário.
         """
         st.header("Definições do Teste")
 
@@ -31,49 +31,41 @@ class ABTesterComponent:
 
         self.hypothesis = st.text_area(
             label="Hipótese do Teste",
-            placeholder="Ex: Se alterarmos a cor do botão 'Comprar' para verde, então a taxa de cliques aumentará pois a nova cor gera mais destaque.",
+            placeholder="Ex: Se alterarmos a cor do botão 'Comprar' para verde, a taxa de cliques aumentará.",
             help="Descreva o que você espera que aconteça e por quê."
         )
         
-        # Usamos colunas para organizar as datas lado a lado
         col1, col2 = st.columns(2)
         with col1:
             self.start_date = st.date_input(
                 label="Data de Início",
                 value=self.start_date,
-                min_value=date(2020, 1, 1),
-                max_value=date(2030, 12, 31)
+                min_value=date(2020, 1, 1)
             )
 
         with col2:
             self.end_date = st.date_input(
                 label="Data de Encerramento",
                 value=self.end_date,
-                min_value=self.start_date, # Data final não pode ser antes da inicial
-                max_value=date(2030, 12, 31)
+                min_value=self.start_date
             )
 
-        # Usar um selectbox para o nível de confiança evita erros de digitação
         self.desired_confidence_level = st.selectbox(
             label="Nível de Confiança Desejado",
             options=[90.0, 95.0, 99.0],
             index=1, # Deixa 95.0 como padrão
-            format_func=lambda x: f"{x}%", # Formata para mostrar o % na UI
-            help="O nível de confiança estatística desejado para validar o resultado."
+            format_func=lambda x: f"{x:.0f}%", # Formata para "95%" em vez de "95.0%"
+            help="O nível de confiança estatística para validar o resultado."
         )
 
-    def get_ab_tester_entity(self) -> ABTester:
+    def get_ab_tester_entity(self) -> ABTester | None:
         """
-        Cria e retorna uma instância da entidade ABTester com os dados
-        coletados dos inputs do Streamlit.
-
-        Returns:
-            ABTester: Uma instância da sua entidade de domínio.
+        Cria e retorna uma instância da entidade ABTester com os dados do formulário.
+        Retorna None se os dados forem inválidos.
         """
-        # Validação simples para garantir que a data final não seja anterior à inicial
         if self.end_date < self.start_date:
             st.error("A data de encerramento não pode ser anterior à data de início.")
-            return None # Retorna None se os dados forem inválidos
+            return None
 
         return ABTester(
             name=self.name,
@@ -82,28 +74,3 @@ class ABTesterComponent:
             hypothesis=self.hypothesis,
             desired_confidence_level=self.desired_confidence_level
         )
-
-# Exemplo de como usar a classe em sua página principal do Streamlit
-if __name__ == '__main__':
-    st.set_page_config(layout="wide")
-    st.title("Calculadora de Teste A/B")
-
-    # Coloca os inputs na barra lateral (sidebar)
-    with st.sidebar:
-        # 1. Cria uma instância do componente
-        ab_tester_form = ABTesterComponent()
-        
-        # 2. Renderiza os inputs na tela
-        ab_tester_form.render_inputs()
-
-    # 3. Recupera a entidade com os dados preenchidos
-    tester_entity = ab_tester_form.get_ab_tester_entity()
-
-    # Mostra os dados coletados na página principal (para depuração)
-    if tester_entity:
-        st.subheader("Dados Coletados do Formulário:")
-        st.write(f"**Nome:** {tester_entity.name}")
-        st.write(f"**Hipótese:** {tester_entity.hypothesis}")
-        st.write(f"**Período:** {tester_entity.start_date.strftime('%d/%m/%Y')} a {tester_entity.end_date.strftime('%d/%m/%Y')}")
-        # A entidade ABTester multiplica o valor, então mostramos o resultado
-        st.write(f"**Nível de Confiança (na entidade):** {tester_entity.desired_confidence_level}")

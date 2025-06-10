@@ -28,30 +28,78 @@ class ResultsComponent:
         st.subheader("Resultado Principal")
         p_value = self.results.get("p_value", 1.0)
         
-        # Correctly calculate significance_level from desired_confidence_level (e.g., 95.0 -> 0.05)
-        significance_level = 1.0 - (self.tester.desired_confidence_level / 100.0)
+        # Nível de confiança desejado, ex: 95.0
+        desired_confidence = self.tester.desired_confidence_level
+        
+        # Nível de significância (alfa), ex: 0.05 para 95% de confiança
+        significance_level = 1.0 - (desired_confidence / 100.0)
+
+
+        confidence_text = f"{desired_confidence:.1f}%".replace(".0%", "%")
 
         if p_value < significance_level:
-            st.success(f"### 🎉 Resultado Significante!")
-            # Use self.tester.desired_confidence_level for the message consistency
-            st.write(f"Com uma confiança de **{self.tester.desired_confidence_level}%**, a Variação (B) mostrou um desempenho estatisticamente diferente do Controle (A). (p-valor: {p_value:.4f})")
+        
+            st.success("### 🎉 Temos um vencedor!")
+            st.write(
+                f"Pode comemorar! A **Variação (B)** superou o **Controle (A)** "
+                f"com um nível de confiança de **{confidence_text}**."
+            )
+            st.caption(
+                "Isso significa que a mudança na Variação (B) tem alta probabilidade de ser a causa "
+                f"da melhoria, não sendo apenas uma obra do acaso. (p-valor: {p_value:.4f})"
+            )
         else:
-            st.warning(f"### 🤔 Resultado Não Significante")
-            st.write(f"Não há evidência estatística suficiente para afirmar uma diferença de desempenho entre a Variação (B) e o Controle (A) com o nível de confiança desejado de **{self.tester.desired_confidence_level}%**. (p-valor: {p_value:.4f})")
+            # --- COPY MELHORADO (Resultado Não Significante) ---
+            st.warning("### 🤔 Resultado Inconclusivo")
+            st.write(
+                f"Ainda não há evidências para declarar a **Variação (B)** como vencedora sobre o **Controle (A)**, "
+                f"considerando o nível de confiança de **{confidence_text}**."
+            )
+            st.caption(
+                "Isso não significa que a Variação (B) é pior, mas que a diferença observada não foi "
+                f"grande o suficiente para descartarmos a chance de ser um resultado aleatório."
+            )
+
+        with st.expander("Critério de Decisão Estatística"):
+            st.markdown(f"""
+            A decisão de significância é baseada na comparação entre o **p-valor** do teste e o **nível de significância (α)**.
+
+            - **Nível de Significância (α):** `{significance_level:.3f}` (calculado como `100% - {confidence_text}`)
+            - **P-Valor do Teste:** `{p_value:.4f}`
+
+            A regra de decisão é: se o **p-valor for menor que o nível de significância (α)**, o resultado é estatisticamente significante.
+
+            Neste caso, como `{p_value:.4f}` é **{'menor' if p_value < significance_level else 'maior ou igual a'}** `{significance_level:.3f}`, o resultado foi considerado **{'Significante' if p_value < significance_level else 'Inconclusivo'}**.
+            """)
+        
+        st.write("---") # Separador visual
         
         col1, col2, col3 = st.columns(3)
-        col1.metric("Uplift da Conversão", f"{self.results.get('conversion_rate_uplift', 0):.2%}")
-        col2.metric("P-Valor", f"{p_value:.4f}")
-        # current_confidence is calculated by ABStatisticalValidator based on p_value
-        col3.metric("Confiança do Resultado", f"{self.results.get('current_confidence', 0):.2%}")
-    
+        col1.metric(
+            label="Uplift da Conversão",
+            value=f"{self.results.get('conversion_rate_uplift', 0):.2%}",
+            help="Indica o aumento ou diminuição percentual da taxa de conversão da Variação (B) em relação ao Controle (A). Esta métrica quantifica o impacto direto da alteração testada."
+        )
+
+        col2.metric(
+            label="P-Valor",
+            value=f"{p_value:.4f}",
+            help="Probabilidade de obter os resultados observados (ou mais extremos) caso a hipótese nula seja verdadeira. Um p-valor baixo (menor que o nível de significância α) sugere que o resultado observado não é fruto do acaso."
+        )
+
+        col3.metric(
+            label="Confiança do Resultado",
+            value=f"{(1 - p_value):.2%}",
+            help="Representa a probabilidade de que a diferença observada seja real. Calculada como (1 - p-valor), oferece uma interpretação intuitiva da significância. Uma confiança de 97% corresponde a um p-valor de 0.03."
+        )
+
     def _display_confidence_intervals(self):
         with st.expander("🔍 Análise de Uplift e Intervalos de Confiança"):
             st.markdown("""
-            O **Intervalo de Confiança** mostra a faixa provável da verdadeira taxa de conversão para cada grupo. Se os intervalos **não se sobrepõem**, é um forte indicativo de que a diferença entre eles é real.
+            O **Intervalo de Confiança** estima a faixa provável para a verdadeira taxa de conversão de cada grupo. Se os intervalos **não se sobrepõem**, é um forte indicativo de que a diferença de desempenho é estatisticamente significante. Uma sobreposição sugere que a diferença observada pode ser fruto do acaso.
             """)
             
-            # These should now be correctly populated in self.results by __init__
+            # ... resto do código do método sem alterações ...
             p_a = self.results.get('control_conversion_rate', 0)
             p_b = self.results.get('variation_conversion_rate', 0)
             lower_a = self.results.get('control_lower_bound', 0)
@@ -66,6 +114,72 @@ class ResultsComponent:
             with col2:
                 st.markdown(f"**Variação (B): {p_b:.2%}**")
                 st.write(f"Intervalo: `{lower_b:.2%}` a `{upper_b:.2%}`")
+
+
+    def _display_temporal_and_planning_analysis(self):
+        """
+        Exibe a análise temporal com um visual aprimorado usando barras de progresso.
+        """
+        with st.expander("🗓️ Análise Temporal e Planejamento do Teste", expanded=True): # Deixei expandido por padrão
+            st.markdown("""
+            Esta seção contextualiza o teste no tempo e compara a duração atual com o planejamento necessário para alcançar poder estatístico, ajudando a decidir quando parar o teste com segurança.
+            """)
+
+            temporal_results = self.results.get("temporal_validation_results", {})
+            planning_results = self.results.get("planning_results", {})
+            dias_corridos = temporal_results.get('total_duration_days', 0)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.subheader("Situação Atual")
+                st.metric("Duração do Teste (Dias)", f"{dias_corridos}")
+                st.metric("Duração (Dias Úteis)", f"{temporal_results.get('business_days_duration', 0)}")
+                st.metric("Média de Visitantes/Dia", f"{int(temporal_results.get('average_daily_visitors', 0))}")
+
+            with col2:
+                st.subheader("Progresso para Conclusão")
+
+                # --- Cartão para 80% de Poder ---
+                with st.container(border=True):
+                    dias_necessarios_80 = planning_results.get('required_days_80_power', 0)
+                    st.markdown("##### Para 80% de Poder Estatístico")
+
+                    if dias_necessarios_80 > 0:
+                        progresso_80 = min(1.0, dias_corridos / dias_necessarios_80)
+                        st.progress(progresso_80)
+                        st.caption(f"{dias_corridos} de {dias_necessarios_80} dias concluídos.")
+                    else:
+                        st.caption("Não foi possível calcular a duração necessária.")
+
+                    # Status final
+                    if dias_corridos >= dias_necessarios_80 and dias_necessarios_80 > 0:
+                        st.success("✅ **CONCLUÍDO:** A duração para 80% de poder foi atingida.")
+                    else:
+                        dias_faltantes_80 = max(0, dias_necessarios_80 - dias_corridos)
+                        st.info(f"⏳ **Em andamento:** Faltam {dias_faltantes_80} dias para atingir a meta.")
+                
+                st.write("") # Adiciona um pequeno espaço vertical
+
+                # --- Cartão para 95% de Poder ---
+                with st.container(border=True):
+                    dias_necessarios_95 = planning_results.get('required_days_95_power', 0)
+                    st.markdown("##### Para 95% de Poder Estatístico")
+
+                    if dias_necessarios_95 > 0:
+                        progresso_95 = min(1.0, dias_corridos / dias_necessarios_95)
+                        st.progress(progresso_95)
+                        st.caption(f"{dias_corridos} de {dias_necessarios_95} dias concluídos.")
+                    else:
+                        st.caption("Não foi possível calcular a duração necessária.")
+
+                    # Status final
+                    if dias_corridos >= dias_necessarios_95 and dias_necessarios_95 > 0:
+                        st.success("✅ **CONCLUÍDO:** A duração para 95% de poder foi atingida.")
+                    else:
+                        dias_faltantes_95 = max(0, dias_necessarios_95 - dias_corridos)
+                        st.info(f"⏳ **Em andamento:** Faltam {dias_faltantes_95} dias para atingir a meta.")
+
 
     def _display_test_validity(self):
         with st.expander("✅ Análise de Validade e Poder do Teste"):
@@ -110,3 +224,5 @@ class ResultsComponent:
         st.divider()
         self._display_confidence_intervals()
         self._display_test_validity()
+        self._display_temporal_and_planning_analysis()
+        st.write("---")
