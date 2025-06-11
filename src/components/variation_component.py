@@ -1,105 +1,98 @@
 import streamlit as st
-from domain.entities.variation import Variation
+from domain.entities.variation import Variation # Mantenha a importação da sua entidade
 
 class VariationComponent:
     """
-    Componente Streamlit que usa st.session_state para persistir os dados do formulário.
+    Componente Streamlit otimizado que usa st.tabs para um layout limpo
+    e st.session_state para persistir TODOS os dados do formulário.
     """
     def __init__(self):
-        """Inicializa as chaves no session_state se ainda não existirem."""
-        # Define os valores padrão apenas se não estiverem no estado da sessão
-        if 'variation_a_visitors' not in st.session_state:
-            st.session_state.variation_a_visitors = 10000
-        if 'conversions_a' not in st.session_state:
-            st.session_state.conversions_a = 500
-        if 'variation_b_visitors' not in st.session_state:
-            st.session_state.variation_b_visitors = 10000
-        if 'conversions_b' not in st.session_state:
-            st.session_state.conversions_b = 550
-        if 'tail_numbers' not in st.session_state:
-            st.session_state.tail_numbers = 1
-        if 'estimated_uplift' not in st.session_state:
-            st.session_state.estimated_uplift = 10.0
+        """
+        Inicializa as chaves no session_state para os dados das variações,
+        apenas se elas ainda não existirem.
+        """
+        # Dados de visitantes e conversões
+        if 'var_control_visitors' not in st.session_state:
+            st.session_state.var_control_visitors = 10000
+        if 'var_control_conversions' not in st.session_state:
+            st.session_state.var_control_conversions = 500
+        if 'var_variant_visitors' not in st.session_state:
+            st.session_state.var_variant_visitors = 10000
+        if 'var_variant_conversions' not in st.session_state:
+            st.session_state.var_variant_conversions = 550
+            
+        # --- CAMPOS REINTEGRADOS ---
+        # Inicializa os campos de 'Tipo de Teste' e 'Uplift' no session_state
+        if 'var_tail_numbers' not in st.session_state:
+            st.session_state.var_tail_numbers = 2 # Padrão para Bicaudal (Two-Tailed)
+        if 'var_estimated_uplift' not in st.session_state:
+            st.session_state.var_estimated_uplift = 10.0
 
     def render_inputs(self):
-        """Renderiza os inputs, usando as chaves do session_state para persistência."""
+        """
+        Renderiza os inputs dentro de um st.expander. Usa st.tabs para os dados
+        das variações e posiciona os outros parâmetros do teste logo abaixo.
+        """
         
-        col1, col2 = st.columns(2)
+        with st.expander("Variações e Parâmetros", expanded=True):
+            st.subheader(" ")
+            
+            tab_control, tab_variant = st.tabs(["Controle (H0)", "Variação (H1)"])
 
-        with col1:
-            st.subheader("Controle (Ho)")
-            # O argumento 'key' liga o input diretamente ao st.session_state
-            st.number_input(
-                label="Número de Visitantes (Controle)",
-                min_value=1,
-                step=1,
-                key='variation_a_visitors', # Chave para persistência
-                help="Total de usuários expostos à versão de controle."
+            with tab_control:
+                st.number_input("Número de Visitantes", min_value=1, step=1, key='var_control_visitors')
+                st.number_input("Número de Conversões", min_value=0, step=1, key='var_control_conversions')
+
+            with tab_variant:
+                st.number_input("Número de Visitantes", min_value=1, step=1, key='var_variant_visitors')
+                st.number_input("Número de Conversões", min_value=0, step=1, key='var_variant_conversions')
+            
+            st.divider()
+            
+            
+            
+            
+            st.radio(
+                label="Tipo de Teste (Caudas)",
+                options=[1, 2],
+                index=1, # Padrão Bicaudal
+                key='var_tail_numbers',
+                format_func=lambda x: "Unicaudal (One-Tailed)" if x == 1 else "Bicaudal (Two-Tailed)",
+                horizontal=True,
+                help="Unicaudal para testar se a variação é apenas 'melhor'. Bicaudal para testar qualquer diferença (melhor ou pior)."
             )
+            
             st.number_input(
-                label="Número de Conversões (Controle)",
-                min_value=0,
-                step=1,
-                key='conversions_a', # Chave para persistência
-                help="Total de usuários que converteram na versão de controle."
+                label="Uplift Mínimo Esperado (MDE) (%)",
+                min_value=0.1,
+                step=0.1,
+                key='var_estimated_uplift',
+                help="O menor aumento percentual que você considera relevante para o negócio."
             )
 
-        with col2:
-            st.subheader("Variação (H1)")
-            st.number_input(
-                label="Número de Visitantes (Variação)",
-                min_value=1,
-                step=1,
-                key='variation_b_visitors', # Chave para persistência
-                help="Total de usuários expostos à nova versão."
-            )
-            st.number_input(
-                label="Número de Conversões (Variação)",
-                min_value=0,
-                step=1,
-                key='conversions_b', # Chave para persistência
-                help="Total de usuários que converteram na nova versão."
-            )
-
-        st.divider()
-        
-
-        # Usando o 'key' também para o radio button
-        st.radio(
-            label="Tipo de Teste (Caudas)",
-            options=[1, 2],
-            index=0,
-            key='tail_numbers',
-            format_func=lambda x: "Unicaudal (One-Tailed)" if x == 1 else "Bicaudal (Two-Tailed)",
-            horizontal=True,
-            help="Unicaudal para testar se a variação é apenas 'melhor'. Bicaudal para testar qualquer diferença (melhor ou pior)."
-        )
-        st.number_input(
-            label="Uplift Mínimo Esperado (MDE) (%)",
-            min_value=0.1,
-            step=0.1,
-            key='estimated_uplift',
-            help="O menor aumento percentual que você considera relevante para o negócio."
-        )
-
-    def get_variation_entity(self) -> Variation:
-        """Cria a entidade a partir dos dados no st.session_state."""
+    def get_variation_entity(self) -> Variation | None:
+        """
+        Cria a entidade a partir dos dados no st.session_state.
+        Inclui todos os campos necessários para a construção da entidade.
+        """
         # Validação
-        if st.session_state.conversions_a > st.session_state.variation_a_visitors:
-            st.error("O número de conversões do Controle não pode ser maior que o de visitantes.")
+        if st.session_state.var_control_conversions > st.session_state.var_control_visitors:
+            st.error("Controle: O número de conversões não pode ser maior que o de visitantes.")
             return None
         
-        if st.session_state.conversions_b > st.session_state.variation_b_visitors:
-            st.error("O número de conversões da Variação não pode ser maior que o de visitantes.")
+        if st.session_state.var_variant_conversions > st.session_state.var_variant_visitors:
+            st.error("Variação: O número de conversões não pode ser maior que o de visitantes.")
             return None
 
-        # Pega os valores do st.session_state em vez de atributos de 'self'
+        # --- CONSTRUÇÃO DA ENTIDADE COMPLETA ---
+        # Agora passando todos os argumentos que sua entidade original esperava.
         return Variation(
-            variation_a_visitors=st.session_state.variation_a_visitors,
-            variation_b_visitors=st.session_state.variation_b_visitors,
-            conversions_a=st.session_state.conversions_a,
-            conversions_b=st.session_state.conversions_b,
-            tail_numbers=st.session_state.tail_numbers,
-            confidence_level=st.session_state.get('confidence_level', 95.0), # Assume que o confidence_level também está no state
-            estimated_uplift=st.session_state.estimated_uplift
+            variation_a_visitors=st.session_state.var_control_visitors,
+            variation_b_visitors=st.session_state.var_variant_visitors,
+            conversions_a=st.session_state.var_control_conversions,
+            conversions_b=st.session_state.var_variant_conversions,
+            tail_numbers=st.session_state.var_tail_numbers,
+            # Pega o nível de confiança do outro componente através do session_state
+            confidence_level=st.session_state.get('ab_tester_confidence', 95.0),
+            estimated_uplift=st.session_state.var_estimated_uplift
         )

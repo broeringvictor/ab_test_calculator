@@ -29,18 +29,48 @@ class ResultsComponent:
     def _apply_custom_css(self):
             """Aplica CSS customizado para corrigir a largura dos tooltips."""
             st.markdown("""
-            <style>
-            /* Alvo específico do container do conteúdo do tooltip do Streamlit */
+  
+        <style>
+            /* Agora usamos seletores de classe simples e diretos! */
+            .st-key-result_card, .st-key-criteria_card, .st-key-confidence_intervals, .st-key-test_validity, .st-key-temporal_analysis, .st-key-full_results_table {
+                background-color: #FFFFFF;
+                border: 1px solid #E9E9E9;
+                border-radius: 10px;
+                padding: 25px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                margin-bottom: 20px;
+            }
+
+  
+
+            .highlight-box {
+                background-color: #E8EAF6;
+                color: #4A3F6D;
+                padding: 3px 8px;
+                border-radius: 6px;
+                font-weight: bold;
+            }
+            
+            div[data-testid="stMetric"] {
+                background-color: #FFFFFF;
+                border: 1px solid #E9E9E9;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            
             div[data-testid="stTooltipContent"] {
                 max-width: 1000px !important;  /* Aumenta a largura E força a aplicação da regra */
                 word-wrap: break-word;
                 white-space: normal;
             }
-            </style>
-            """, unsafe_allow_html=True)
+        </style>
+        """, unsafe_allow_html=True)
+    
+     
+           
 
     def _display_main_result(self):
-        st.subheader("Resultado Principal")
+        
         p_value = self.results.get("p_value", 1.0)
         
         # Nível de confiança desejado, ex: 95.0
@@ -51,43 +81,37 @@ class ResultsComponent:
 
 
         confidence_text = f"{desired_confidence:.1f}%".replace(".0%", "%")
+        with st.container(key="result_card"):
+            if p_value < significance_level:
+            
+                st.success("### 🎉🎉🎉 Temos um vencedor! 🎉🎉🎉")
+                st.write(f"""
+                Pode comemorar, temos um vencedor! 
+                A Variação (B) apresentou um desempenho superior ao Controle (A) com um nível de confiança de {confidence_text}. Isso significa que a mudança implementada na Variação (B) tem alta probabilidade de ser a causa da melhoria, não sendo um resultado aleatório ou obra do acaso, o que é confirmado pelo baixo p-valor de {p_value:.4f}.
+                """)
+     
+            else:
+ 
+                st.warning("### 😵 Resultado Inconclusivo")
+                st.write(
+                    f"""Ainda não é possível declarar um vencedor. Com o nível de confiança estabelecido em {confidence_text}, não há evidências estatísticas suficientes para comprovar que a Variação (B) é superior ao Controle (A). É importante notar que isso não significa que a Variação (B) seja pior; apenas que a diferença observada entre as duas versões não foi grande o suficiente para descartar a possibilidade de ser uma flutuação aleatória."""
+                )
+      
 
-        if p_value < significance_level:
-        
-            st.success("### 🎉 Temos um vencedor!")
-            st.write(
-                f"Pode comemorar! A **Variação (B)** superou o **Controle (A)** "
-                f"com um nível de confiança de **{confidence_text}**."
-            )
-            st.caption(
-                "Isso significa que a mudança na Variação (B) tem alta probabilidade de ser a causa "
-                f"da melhoria, não sendo apenas uma obra do acaso. (p-valor: {p_value:.4f})"
-            )
-        else:
-            # --- COPY MELHORADO (Resultado Não Significante) ---
-            st.warning("### 🤔 Resultado Inconclusivo")
-            st.write(
-                f"Ainda não há evidências para declarar a **Variação (B)** como vencedora sobre o **Controle (A)**, "
-                f"considerando o nível de confiança de **{confidence_text}**."
-            )
-            st.caption(
-                "Isso não significa que a Variação (B) é pior, mas que a diferença observada não foi "
-                f"grande o suficiente para descartarmos a chance de ser um resultado aleatório."
-            )
-
-        with st.expander("Critério de Decisão Estatística"):
+        with st.container(key="criteria_card"):
+            st.subheader("Critério de Decisão Estatística")
             st.markdown(f"""
-            A decisão de significância é baseada na comparação entre o **p-valor** do teste e o **nível de significância (α)**.
+                A decisão de significância é baseada na comparação entre o **p-valor** do teste e o **nível de significância (α)**.
 
-            - **Nível de Significância (α):** `{significance_level:.3f}` (calculado como `100% - {confidence_text}`)
-            - **P-Valor do Teste:** `{p_value:.4f}`
+                - **Nível de Significância (α):** `{significance_level:.3f}` (calculado como `100% - {confidence_text}`)
+                - **P-Valor do Teste:** `{p_value:.4f}`
 
-            A regra de decisão é: se o **p-valor for menor que o nível de significância (α)**, o resultado é estatisticamente significante.
+                A regra de decisão é: se o **p-valor for menor que o nível de significância (α)**, o resultado é estatisticamente significante.
 
-            Neste caso, como `{p_value:.4f}` é **{'menor' if p_value < significance_level else 'maior ou igual a'}** `{significance_level:.3f}`, o resultado foi considerado **{'Significante' if p_value < significance_level else 'Inconclusivo'}**.
-            """)
+                Neste caso, como `{p_value:.4f}` é **{'menor' if p_value < significance_level else 'maior ou igual a'}** `{significance_level:.3f}`, o resultado foi considerado **{'Significante' if p_value < significance_level else 'Inconclusivo'}**.
+                """)
         
-        st.write("---") # Separador visual
+# Separador visual
         
         col1, col2, col3 = st.columns(3)
         col1.metric(
@@ -112,7 +136,9 @@ class ResultsComponent:
         """
         Exibe a análise de significância estatística com uma interface clara e conclusões diretas.
         """
-        with st.expander("💡 Análise de Significância Estatística e Uplift", expanded=True):
+        with st.container(key="confidence_intervals"):
+            st.subheader("💡 Análise de Significância Estatística e Uplift")
+
             st.markdown("""
             Para garantir que a diferença de conversão não é fruto do acaso, analisamos os **Intervalos de Confiança**.
             Pense neles como a "margem de erro" de cada versão. Eles nos mostram a faixa onde a verdadeira taxa de conversão provavelmente se encontra.
@@ -166,7 +192,8 @@ class ResultsComponent:
         """
         Exibe a análise temporal com um visual aprimorado usando barras de progresso.
         """
-        with st.expander("🗓️ Análise Temporal e Planejamento do Teste", expanded=True): # Deixei expandido por padrão
+        with st.container(key="temporal_analysis"):
+            st.subheader("🗓️ Análise Temporal e Planejamento do Teste")
             st.markdown("""
             Esta seção contextualiza o teste no tempo e compara a duração atual com o planejamento necessário para alcançar poder estatístico, ajudando a decidir quando parar o teste com segurança.
             """)
@@ -228,7 +255,8 @@ class ResultsComponent:
 
 
     def _display_test_validity(self):
-        with st.expander("✅ Análise de Validade e Poder do Teste"):
+        with st.container(key="test_validity"):
+            st.subheader("✅ Análise de Validade e Poder do Teste")
             st.markdown("""
             Esta seção verifica se os resultados do seu teste são confiáveis. Verificamos o **Poder Estatístico** (a capacidade de detectar um efeito real) e o **SRM** (se o tráfego foi dividido corretamente).
             """)
@@ -368,16 +396,18 @@ class ResultsComponent:
             else:
                 st.warning("Não foi possível gerar a tabela de resumo de métricas.")
     def render(self):
-        self._apply_custom_css()
-        if not self.results: # Check if results were properly initialized
-            st.error("Não foi possível gerar o relatório de resultados. Verifique os dados de entrada.")
-            return
+        with st.container(key="full_results_table"):
+
+            self._apply_custom_css()
+            if not self.results: # Check if results were properly initialized
+                st.error("Não foi possível gerar o relatório de resultados. Verifique os dados de entrada.")
+                return
+                
+            st.title("📊 Relatório de Resultados")
+            self._display_main_result()
+            st.divider()
+            self._display_confidence_intervals()
+            self._display_test_validity()
+            self._display_temporal_and_planning_analysis()
+            self._display_full_results_table()
             
-        st.title("📊 Relatório de Resultados")
-        self._display_main_result()
-        st.divider()
-        self._display_confidence_intervals()
-        self._display_test_validity()
-        self._display_temporal_and_planning_analysis()
-        self._display_full_results_table()
-        st.write("---")

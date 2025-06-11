@@ -1,76 +1,93 @@
 import streamlit as st
 from datetime import date, timedelta
-from domain.entities.ab_tester import ABTester # Importa sua entidade
+from domain.entities.ab_tester import ABTester # Sua entidade permanece a mesma
 
 class ABTesterComponent:
     """
-    Um componente Streamlit para renderizar e gerenciar os inputs
-    de definição de um teste A/B.
+    Componente Streamlit corrigido para gerenciar os inputs de um teste A/B,
+    usando st.session_state para persistir os dados do usuário.
     """
     def __init__(self):
-        """Inicializa o componente com valores padrão."""
-        # Adicionando type hints para clareza
-        self.name: str = "Teste A/B"
-        self.start_date: date = date.today()
-        self.end_date: date = self.start_date + timedelta(days=14)
-        self.hypothesis: str = ""
-        self.desired_confidence_level: float = 95.0
+        """
+        Inicializa o st.session_state com valores padrão, mas APENAS
+        se eles ainda não existirem. Isso garante que os dados do usuário
+        sejam preservados entre as reexecuções do script.
+        """
+        # Define os valores no session_state para persistência de dados.
+        # O 'if' garante que isso só acontece uma vez por sessão.
+        if 'ab_tester_name' not in st.session_state:
+            st.session_state.ab_tester_name = "Teste A/B"
+        if 'ab_tester_start_date' not in st.session_state:
+            st.session_state.ab_tester_start_date = date.today()
+        if 'ab_tester_end_date' not in st.session_state:
+            # A data final deve ser baseada na data de início do session_state
+            st.session_state.ab_tester_end_date = st.session_state.ab_tester_start_date + timedelta(days=14)
+        if 'ab_tester_hypothesis' not in st.session_state:
+            st.session_state.ab_tester_hypothesis = ""
+        if 'ab_tester_confidence' not in st.session_state:
+            st.session_state.ab_tester_confidence = 95.0
 
     def render_inputs(self):
         """
-        Renderiza os widgets de input e atualiza os atributos da classe
-        com os valores selecionados pelo usuário.
+        Renderiza os widgets de input. O parâmetro 'key' de cada widget
+        conecta-o diretamente a uma chave no st.session_state,
+        garantindo a leitura e escrita dos dados corretos.
         """
         st.header("Definições do Teste")
 
-        self.name = st.text_input(
+        # Não atribuímos mais a 'self.name'. O 'key' cuida de tudo.
+        st.text_input(
             label="Nome do Teste",
-            value=self.name,
+            key='ab_tester_name', # Vinculado ao session_state
             help="Dê um nome descritivo para o seu teste A/B."
         )
 
-        self.hypothesis = st.text_area(
+        st.text_area(
             label="Hipótese do Teste",
+            key='ab_tester_hypothesis', # Vinculado ao session_state
             placeholder="Ex: Se alterarmos a cor do botão 'Comprar' para verde, a taxa de cliques aumentará.",
             help="Descreva o que você espera que aconteça e por quê."
         )
         
         col1, col2 = st.columns(2)
         with col1:
-            self.start_date = st.date_input(
+            st.date_input(
                 label="Data de Início",
-                value=self.start_date,
+                key='ab_tester_start_date', # Vinculado ao session_state
                 min_value=date(2020, 1, 1)
             )
 
         with col2:
-            self.end_date = st.date_input(
+            st.date_input(
                 label="Data de Encerramento",
-                value=self.end_date,
-                min_value=self.start_date
+                key='ab_tester_end_date', # Vinculado ao session_state
+                min_value=st.session_state.ab_tester_start_date # Validação em tempo real
             )
 
-        self.desired_confidence_level = st.selectbox(
+        st.selectbox(
             label="Nível de Confiança Desejado",
             options=[90.0, 95.0, 99.0],
-            index=1, # Deixa 95.0 como padrão
-            format_func=lambda x: f"{x:.0f}%", # Formata para "95%" em vez de "95.0%"
+            key='ab_tester_confidence', # Vinculado ao session_state
+            index=1,
+            format_func=lambda x: f"{int(x)}%",
             help="O nível de confiança estatística para validar o resultado."
         )
 
     def get_ab_tester_entity(self) -> ABTester | None:
         """
-        Cria e retorna uma instância da entidade ABTester com os dados do formulário.
-        Retorna None se os dados forem inválidos.
+        Cria e retorna uma instância da entidade ABTester lendo os dados
+        diretamente do st.session_state, que contém os valores inseridos pelo usuário.
         """
-        if self.end_date < self.start_date:
+        # A validação agora usa os dados corretos do session_state
+        if st.session_state.ab_tester_end_date < st.session_state.ab_tester_start_date:
             st.error("A data de encerramento não pode ser anterior à data de início.")
             return None
 
+        # Cria a entidade a partir dos dados persistidos no session_state
         return ABTester(
-            name=self.name,
-            start_date=self.start_date,
-            end_date=self.end_date,
-            hypothesis=self.hypothesis,
-            desired_confidence_level=self.desired_confidence_level
+            name=st.session_state.ab_tester_name,
+            start_date=st.session_state.ab_tester_start_date,
+            end_date=st.session_state.ab_tester_end_date,
+            hypothesis=st.session_state.ab_tester_hypothesis,
+            desired_confidence_level=st.session_state.ab_tester_confidence
         )
