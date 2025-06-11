@@ -11,6 +11,22 @@ from components.ab_tester_component import ABTesterComponent
 from components.variation_component import VariationComponent
 from components.results_component import ResultsComponent 
 
+def load_layout_css():
+    # noinspection PyStringFormat,PyUnresolvedReferences
+    st.markdown(f"""
+        <style>
+            /* Esconde o header e footer padrão do Streamlit */
+            #MainMenu, footer {{visibility: hidden;}}
+            /* Adiciona um pouco mais de espaço no topo da página */
+            .block-container {{padding-top: 2rem;}}
+            /* Ajusta o espaçamento nas abas da sidebar */
+            [data-testid="stTabs"] {{margin-top: -20px;}}
+        </style>
+
+    """, unsafe_allow_html=True)
+
+load_layout_css()
+
 if "init" not in st.session_state:
     st.session_state.chart_data = pd.DataFrame(
         np.random.randn(20, 3), columns=["a", "b", "c"]
@@ -32,23 +48,20 @@ def hash_ab_tester_entity(tester: ABTester) -> tuple:
         tester.start_date,
         tester.end_date,
         tester.hypothesis,
-        tester.desired_confidence_level,
-        # Se power_level for um atributo de ABTester e usado, inclua-o.
-        # Caso contrário, remova a referência a tester.power_level se não existir.
-        # Se 'confidence_level' é o mesmo que 'desired_confidence_level', use apenas um.
+        tester.desired_confidence_level
+
     )
 
 def hash_variation_entity(variation: Variation) -> tuple:
     """Cria uma impressão digital (hash) para a entidade Variation."""
-    # Esta função parece correta, assumindo que Variation tem estes atributos
-    # e eles são usados nos cálculos.
+
     return (
         variation.variation_a_visitors,
         variation.conversions_a,
         variation.variation_b_visitors,
         variation.conversions_b,
         variation.tail_numbers,
-        variation.confidence_level, # Este é o confidence_level da variação (ex: 0.95)
+        variation.confidence_level, 
         variation.estimated_uplift
     )
 
@@ -83,6 +96,7 @@ def clear_state():
 
 # --- Barra Lateral com os Formulários (Inputs) ---
 with st.sidebar:
+    
     ab_tester_form = ABTesterComponent()
     variation_form = VariationComponent()
 
@@ -90,10 +104,10 @@ with st.sidebar:
     st.divider()
     variation_form.render_inputs()
     
-    st.divider()
+    # Adiciona um espaço para empurrar o botão para baixo
+    st.markdown("<div style='height: 40px;'></div>", unsafe_allow_html=True)
     calculate_button = st.button("Analisar Resultados", type="primary", use_container_width=True)
-    
-    st.button("Limpar Dados e Cache", on_click=clear_state, use_container_width=True)
+
 
 # --- Página Principal com os Resultados (Outputs) ---
 if calculate_button:
@@ -102,10 +116,9 @@ if calculate_button:
 
     if tester_entity and variation_entity:
         with st.spinner("Calculando resultados..."):
-            # Chama a função cacheada. ResultsComponent é instanciado aqui.
-            results_component_instance = perform_statistical_analysis(tester_entity, variation_entity)
-            results_component_instance.render() # Renderiza os resultados
+            results_component = ResultsComponent(tester=tester_entity, variation=variation_entity)
+            results_component.render()
     else:
-        st.error("Por favor, preencha todos os campos corretamente antes de analisar.")
+        st.error("Erro ao obter dados dos formulários. Verifique os inputs.")
 else:
-    st.info("Preencha os dados do teste na barra lateral e clique em 'Analisar Resultados'.")
+    st.info("Preencha os dados do teste na barra lateral e clique em 'Analisar Resultados' para começar.")

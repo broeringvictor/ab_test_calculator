@@ -33,15 +33,12 @@ url = "app/static/SpaceMono-Regular.ttf"
 style = "normal"
 weight = 400
 
+
 [theme]
 primaryColor = "#9B89CF"
 backgroundColor = "#F9F7FD"
 secondaryBackgroundColor = "#EDE9F6"
 textColor = "#4A3F6D"
-linkColor = "#9B89CF" # Ajustei para ser igual ao primaryColor para consistência
-borderColor = "#D9D1E9"
-showWidgetBorder = true
-baseRadius = "0.6rem"
 font = "SpaceGrotesk"
 headingFont = "SpaceGroteskHeader"
 codeFont = "SpaceMono"
