@@ -59,7 +59,7 @@ class ABTesterComponent:
 
         with col2:
             st.date_input(
-                label="Data de Encerramento",
+                label="Encerramento",
                 key='ab_tester_end_date', # Vinculado ao session_state
                 min_value=st.session_state.ab_tester_start_date # Validação em tempo real
             )
