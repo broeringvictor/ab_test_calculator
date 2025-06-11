@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import textwrap
 from domain.entities.ab_tester import ABTester
 from domain.entities.variation import Variation
 from domain.use_cases.ab_statistical_validator import ABStatisticalValidator 
@@ -24,6 +25,19 @@ class ResultsComponent:
             self.results['control_conversion_rate'] = self.variation.conversion_rate_a
         if 'variation_conversion_rate' not in self.results:
             self.results['variation_conversion_rate'] = self.variation.conversion_rate_b
+
+    def _apply_custom_css(self):
+            """Aplica CSS customizado para corrigir a largura dos tooltips."""
+            st.markdown("""
+            <style>
+            /* Alvo específico do container do conteúdo do tooltip do Streamlit */
+            div[data-testid="stTooltipContent"] {
+                max-width: 1000px !important;  /* Aumenta a largura E força a aplicação da regra */
+                word-wrap: break-word;
+                white-space: normal;
+            }
+            </style>
+            """, unsafe_allow_html=True)
 
     def _display_main_result(self):
         st.subheader("Resultado Principal")
@@ -221,7 +235,7 @@ class ResultsComponent:
 
             # Poder do Teste Observado
             power = self.results.get("observed_test_power", 0)
-            st.subheader("Poder do Teste Observado", help="""
+            st.subheader("Poder do Teste Observado", help=textwrap.dedent("""
             Pense no Poder Estatístico como o 'poder de resolução' do seu teste. Ele quantifica a 
             capacidade do experimento de 'enxergar' uma diferença real entre as variações, caso ela exista.
             
@@ -234,7 +248,7 @@ class ResultsComponent:
             
             O padrão de 80% de poder garante que você tenha uma alta probabilidade de confirmar 
             cientificamente as suas hipóteses bem-sucedidas.
-            """)
+            """))
             st.markdown("""
                         >O padrão de 80% de poder garante que você tenha uma alta probabilidade de confirmar 
                         cientificamente as suas hipóteses bem-sucedidas.
@@ -255,9 +269,9 @@ class ResultsComponent:
             srm_results = self.results.get("srm_results", {})
             has_srm = srm_results.get("has_srm", False)
             srm_p_value = srm_results.get("srm_p_value", 1.0)
-            st.subheader("SRM (Sample Ratio Mismatch)", help="""
+            st.subheader("SRM (Sample Ratio Mismatch)", help=textwrap.dedent("""
             O SRM (Sample Ratio Mismatch) verifica se a proporção de visitantes entre os grupos Controle e Variação está correta. 
-            """)      
+            """))      
             if not has_srm:
                 st.success(f"**NÃO HÁ SRM.** (P-valor do SRM: {srm_p_value:.3f})")
                 st.write("A divisão de tráfego entre os grupos parece correta. Os resultados do teste são confiáveis nesse quesito.")
@@ -354,6 +368,7 @@ class ResultsComponent:
             else:
                 st.warning("Não foi possível gerar a tabela de resumo de métricas.")
     def render(self):
+        self._apply_custom_css()
         if not self.results: # Check if results were properly initialized
             st.error("Não foi possível gerar o relatório de resultados. Verifique os dados de entrada.")
             return

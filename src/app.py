@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+import numpy as np
 
 st.set_page_config(layout="wide", page_title="Calculadora de Teste A/B")
 
@@ -9,38 +11,15 @@ from components.ab_tester_component import ABTesterComponent
 from components.variation_component import VariationComponent
 from components.results_component import ResultsComponent 
 
-st.markdown("""
-<style>
-    /* Aumenta o tamanho da fonte do título principal (st.title) */
-    h1 {
-        font-size: 2.8rem !important;
-    }
-
-    /* Aumenta o tamanho da fonte dos subtítulos (st.header, st.subheader) */
-    h2, h3 {
-        font-size: 2rem !important;
-    }
-    
-    /* Aumenta o texto geral (parágrafos) e nos botões */
-    p, .st-emotion-cache-1y4p8pa, .st-emotion-cache-10trblm {
-        font-size: 1.3rem !important;
-    }
-
-    /* Aumenta o tamanho do rótulo e do valor dentro de st.metric */
-    [data-testid="stMetricLabel"] p {
-        font-size: 1.3rem !important;
-    }
-
-    [data-testid="stMetricValue"] {
-        font-size: 3.5rem !important;
-    }
-
-    /* Aumenta o texto dentro dos expanders */
-    .st-expander p {
-        font-size: 1.1rem !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+if "init" not in st.session_state:
+    st.session_state.chart_data = pd.DataFrame(
+        np.random.randn(20, 3), columns=["a", "b", "c"]
+    )
+    st.session_state.map_data = pd.DataFrame(
+        np.random.randn(1000, 2) / [50, 50] + [37.76, -122.4],
+        columns=["lat", "lon"],
+    )
+    st.session_state.init = True
 
 
 def hash_ab_tester_entity(tester: ABTester) -> tuple:
@@ -90,7 +69,7 @@ def perform_statistical_analysis(tester_entity: ABTester, variation_entity: Vari
     results_display_component = ResultsComponent(tester=tester_entity, variation=variation_entity)
     return results_display_component
 
-st.title("Calculadora de Significado Estatístico para Teste A/B")
+
 
 # --- Lógica do Botão de Limpeza ---
 def clear_state():
